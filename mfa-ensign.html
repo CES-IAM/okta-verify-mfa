@@ -1,0 +1,336 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+   <meta name="robots" content="noindex,nofollow" />
+   <!-- Styles generated from theme -->
+   <link href="{{themedStylesUrl}}" rel="stylesheet" type="text/css">
+   <!-- Favicon from theme -->
+   <link rel="shortcut icon" href="{{faviconUrl}}" type="image/x-icon" />
+
+   <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+
+   <title>{{pageTitle}}</title>
+   {{{SignInWidgetResources}}}
+</head>
+
+<body>
+   <div class="login-bg-image tb--background" style="background-image: {{bgImageUrl}}"></div>
+   <div id="okta-login-container"></div>
+   
+   <!--
+           "OktaUtil" defines a global OktaUtil object
+           that contains methods used to complete the Okta login flow.
+        -->
+   {{{OktaUtil}}}
+
+   <script type="text/javascript" nonce="{{nonceValue}}">
+
+      let mfaDetector = false;
+
+      var config = OktaUtil.getSignInWidgetConfig();
+      if (!config.i18n.hasOwnProperty("en")) {
+            config.i18n.en = {};
+         }
+      config.i18n.en["oie.google_authenticator.label"] = "Google/Microsoft Authenticatior";
+      config.i18n.en["oie.enroll.webauthn.instructions"] = "You will be prompted to register a security key or biometric authenticator (Windows Hello, Touch ID, Face ID, etc.). Follow the instructions to complete set up. If you choose to use a passkey, make sure the passkey isn't trapped on this computer.";
+      config.i18n.en["oie.enroll.okta_verify.qrcode.step2"] = "Open the app and follow the instructions to add your account";
+      config.i18n.en["oie.enroll.okta_verify.qrcode.step3.updated"] = "When prompted, tap <$1>Scan a QR code</$1>, then scan the QR code below:";
+
+      function mfa_ov_detector(semaphor) {
+         let mfa_ov_detect = $("div:contains('On your other device, download the Okta Verify app')");
+
+         if (mfa_ov_detect.length > 0) {
+            //mfa_ov_detect[mfa_ov_detect.length - 1].innerHTML = "<p>You'll use the Okta Verify app on your phone/tablet as a second authentication method. Click the button to choose your path:</p><a href='#' class='btn' onclick='loadModal();' id='installhelp'>Help me install Okta Verify</a><a href='#' class='btn' onclick='showQR();' id='readyscan'>I'm ready to scan</a>";
+            mfa_ov_detect[mfa_ov_detect.length - 1].innerHTML = "<p>You'll use the Okta Verify app on your phone/tablet as a second authentication method.</p><h4 class='stepper'> Step 1</h4><a href='#' class='btn' onclick='loadModal(\"verify-start\");' id='installhelp'>Download Okta Verify</a><h5 class='stepper' style='padding-bottom:25px; font-style: italic;'>If you already have Okta Verify skip this step</h5><h4 class='stepper'>Step 2</h4><h5 class='stepper'>Step-by-step guide for new or existing users</h5><a href='#' class='btn' onclick='loadModal(\"verify-0\");' id='installhelp'>Step-by-step Guide</a><h4 class='stepper'>Step 3</h4><h5 class='stepper'>You will scan the QR code below at the end of the step-by-step guide.</h5><a href='#' class='btn' id='showQR'>Scan Setup Code</a>"
+            $("#showQR").click(function () { $("div[data-se='qrContainer']").show(); })
+
+            $("div[data-se='qrContainer']").hide();
+            $("div[data-se='qrContainer']").html("<p>Scan the QR code with Okta Verify:</p>" + $("div[data-se='qrContainer']").html());
+            mfaDetector = true;
+            console.log("detected");
+         } else {
+            console.log("class not found");
+            if (!semaphor && !mfaDetector) {
+               setTimeout(mfa_ov_detector, 100, true);
+            } else {
+               console.log("semaphor detected");
+            }
+         }
+      }
+
+      function mfa_timeout_detector() {
+         if ($("div[data-se='infobox-error']").length > 0) {
+            // This page has timed out!
+            return true;
+         }
+         return false;
+      }
+
+      // Render the Okta Sign-In Widget
+      var oktaSignIn = new OktaSignIn(config);
+
+      oktaSignIn.on('afterRender', function (context) {
+         console.log("after");
+         setTimeout(mfa_ov_detector, 100);
+      });
+
+      oktaSignIn.on('ready', function (context) {
+         console.log("ready");
+      });
+
+      oktaSignIn.on('afterError', function (context) {
+         console.log("afterError");
+      });
+
+      oktaSignIn.renderEl({ el: '#okta-login-container' },
+         OktaUtil.completeLogin,
+         function (error) {
+            // Logs errors that occur when configuring the widget.
+            // Remove or replace this with your own custom error handler.
+            console.log(error.message, error);
+
+         }
+      );
+
+      function loadModal(step) {
+         $("#mfa-modal").show();
+         $("#mfa-modal").load("https://assets.ceslogin.org/mfa/ensign/verify-guide.html", function(){
+            console.log(step);
+            showStep(step);
+         });
+      }
+
+      function showStep(step) {
+         $(".mfa-step").hide();
+         $("#" + step).show();
+      }
+
+      function showLastStep(step, stepA) {
+         $(".mfa-step").hide();
+
+         if (mfa_timeout_detector()) {
+            $("#" + stepA).show();
+         } else {
+            $("#" + step).show();
+         }
+      }
+
+      function showQR() {
+         $("div[data-se='qrContainer']").show()
+         closeModal();
+      }
+
+      function closeModal() {
+         $("#mfa-modal").hide();
+      }
+
+
+   </script>
+
+   <!-- MFA Modal CSS -->
+
+   <style>
+      .modal {
+         display: none;
+         position: fixed;
+         z-index: 1;
+         left: 0;
+         top: 0;
+         width: 100%;
+         height: 100%;
+         overflow: auto;
+         background-color: rgba(0, 0, 0, 0.9);
+         font-family: 'Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Oxygen-Sans', 'Ubuntu', 'Cantarell', 'Helvetica Neue', sans-serif
+      }
+
+      .modal-content {
+         margin: 5% auto;
+         padding: 20px;
+         border: 1px solid #000;
+         width: 80%;
+         background-color: #fff;
+         z-index: 2;
+         height: 700px;
+         border-radius: 15px;
+      }
+
+      .mfa-step {
+         display: none;
+         padding: 0 30px;
+         text-align: center;
+
+
+         max-width: 600px;
+         max-height: 660px;
+         margin: 0 auto;
+         padding: 30px;
+      }
+
+      .mfa-head {
+         width: 100%;
+         display: flex;
+      }
+
+      img:has(> div.mfa-head) {
+         margin: 5px 0;
+      }
+
+      .btn {
+         background: #006248;
+         border-radius: 5px;
+         color: #fff;
+         font-size: 16px;
+         font-weight: 600;
+         /*letter-spacing: .8px;*/
+         line-height: 19.2px;
+         margin-top: 12px;
+         margin-bottom: 12px;
+         /*padding: 10px 25px;*/
+         text-decoration: none;
+         transition: all .2s;
+         font-family: 'Aeonik', 'Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Oxygen-Sans', 'Ubuntu', 'Cantarell', 'Helvetica Neue', sans-serif;
+         padding-left: 18.28px;
+         padding-right: 18.28px;
+         padding-top: 13.7143px;
+         padding-bottom: 13.7143px;
+         text-align: center;
+
+      }
+
+      .btn:hover {
+         background-color: #02382a;
+      }
+
+      .btn-grey {
+         background: #fff;
+         border: 2px solid #A0A0A0;
+         border-radius: 5px;
+         color: #424242;
+         font-size: 16px;
+         font-weight: 600;
+         letter-spacing: .125px;
+         margin: 12px;
+         padding: 10px 25px;
+         text-decoration: none;
+         transition: all .2s;
+      }
+
+      .btn-grey:hover {
+         background: #eee;
+      }
+
+      .btn-red {
+         background: #A3082A;
+         border-radius: 5px;
+         color: #fff;
+         font-size: 16px;
+         font-weight: 600;
+         letter-spacing: .125px;
+         margin: 12px;
+         padding: 10px 22px;
+         text-decoration: none;
+         transition: all .2s;
+      }
+
+      .btn-red:hover {
+         background: #E61744;
+      }
+
+      .btn-grid {
+         display: flex;
+         gap: 15px;
+         justify-content: center;
+         text-align: center;
+      }
+
+      .content-grid {
+         display: flex;
+         justify-content: center;
+         margin-bottom: 35px;
+         text-align: center;
+         flex-wrap: nowrap;
+      }
+
+      .content {
+         align-content: center;
+         margin: 0px auto;
+         padding: 0 35px;
+         width: 100%;
+      }
+
+      div.content>h1 {
+         font-size: 24px;
+         margin-bottom: 20px;
+         margin-top: 10px;
+         color: #272727;
+      }
+
+      div.content>p {
+         font-size: 18px;
+         text-align: center;
+         color: #272727;
+      }
+
+      div.content>img {
+         margin: 5px 0;
+         width: 320px;
+         font-family: 'Aeonik', 'Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Oxygen-Sans', 'Ubuntu', 'Cantarell', 'Helvetica Neue', sans-serif;
+      }
+
+      img.qr {
+         max-width: 200px; margin:12px 0;
+      }
+
+      img.step {
+         width: 20%;
+         margin: 12px 0;
+      }
+
+      h4.stepper {
+         font-weight: 800;
+         font-family: 'Aeonik', 'Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Oxygen-Sans', 'Ubuntu', 'Cantarell', 'Helvetica Neue', sans-serif;
+         margin-block: initial;
+         color: #272727;
+      }
+
+      h5.stepper {
+         font-weight: 400;
+         font-family: 'Aeonik', 'Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Oxygen-Sans', 'Ubuntu', 'Cantarell', 'Helvetica Neue', sans-serif;
+         margin-block: initial;
+         color: #272727;
+      }
+
+      h2.stepper {
+         font-weight: 500;
+         font-size: 24px;
+         color: #272727;
+         font-family: 'Aeonik', 'Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Oxygen-Sans', 'Ubuntu', 'Cantarell', 'Helvetica Neue', sans-serif;
+      }
+
+      div.content>p.sub {
+         font-size: 11px;
+         font-style: italic;
+         font-family: 'Aeonik', 'Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Oxygen-Sans', 'Ubuntu', 'Cantarell', 'Helvetica Neue', sans-serif;
+      }
+
+
+   </style>
+
+   <!-- End MFA Modal CSS-->
+
+
+   <div id="mfa-modal" class="modal">
+      <div id="modal-container" class="modal-content">
+         <div class="mfa-step" id="verify-start" style="display: block;">
+            <div class="content">
+               Loading instructions...
+            </div>
+         </div>
+      </div>
+
+</body>
+
+</html>

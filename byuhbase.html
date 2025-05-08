@@ -1,0 +1,551 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex,nofollow" />
+    <!-- Styles generated from theme -->
+    <link href="{{themedStylesUrl}}" rel="stylesheet" type="text/css">
+    <!-- Favicon from theme -->
+    <link rel="shortcut icon" href="{{faviconUrl}}" type="image/x-icon"/>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+
+    <title>{{pageTitle}}</title>
+    {{{SignInWidgetResources}}}
+
+    <style nonce="{{nonceValue}}">
+        #login-bg-image-id {
+            background-image: {{bgImageUrl}}
+        }
+
+        #okta-sign-in.auth-container.main-container {
+            margin-right: 128px;
+        }
+
+        #okta-sign-in.auth-container .okta-sign-in-header {
+            background-color: #9e1b34;
+        }
+    </style>
+
+<!-- MFA Modal Styles -->
+
+<!-- -->
+</head>
+<body>
+    <div id="login-bg-image-id" class="login-bg-image tb--background"></div>
+    <div id="okta-login-container"></div>
+
+    <!--
+        "OktaUtil" defines a global OktaUtil object
+        that contains methods used to complete the Okta login flow.
+     -->
+    {{{OktaUtil}}}
+
+    <script type="text/javascript" nonce="{{nonceValue}}">
+
+        let mfaDetector = false;
+
+        // "config" object contains default widget configuration
+        // with any custom overrides defined in your admin settings.
+        var config = OktaUtil.getSignInWidgetConfig();
+        config.i18n.en["oie.google_authenticator.label"] = "Google/Microsoft Authenticatior";
+        //config.i18n.en["oie.webauthn.label"] = "Stare at computer";
+        //config.i18n.en["oie.verify.webauthn.instructions"] = "Stare at computer so we can determine who you are.";
+        config.i18n.en["oie.enroll.webauthn.instructions"] = "If you choose to use a passkey, make sure you also enroll in something else!";
+        //config.i18n.en["oie.enroll.okta_verify.qrcode.step1.updated"] = "<a onclick='loadModal();' id='secretlink'>Open Modal</a>On your other device, do a song and dance, and then download the Okta Verify app from the App Store® (iPhone® and iPad®) or on Google Play (Android® devices).";
+        config.i18n.en["oie.enroll.okta_verify.qrcode.step2"] = "Open the app and follow the instructions to add your account";
+        config.i18n.en["oie.enroll.okta_verify.qrcode.step3.updated"] = "When prompted, tap <$1>Scan a QR code</$1>, then scan the QR code below:";
+
+        function mfa_ov_detector(semaphor){
+            let mfa_ov_detect = $("div:contains('On your other device, download the Okta Verify app')");
+
+            if (mfa_ov_detect.length > 0) {
+                mfa_ov_detect[mfa_ov_detect.length - 1].innerHTML = "<p>You'll use the Okta Verify app on your phone/tablet as a second authentication method. Click the button to choose your path:</p><a href='#' class='btn' onclick='loadModal();' id='installhelp'>Help me install Okta Verify</a><a href='#' class='btn' onclick='showQR();' id='readyscan'>I'm ready to scan</a>";
+                $("div[data-se='qrContainer']").hide();
+                $("div[data-se='qrContainer']").html("<p>Scan the QR code with Okta Verify:</p>" + $("div[data-se='qrContainer']").html());
+                mfaDetector = true;
+                console.log("detected");
+            } else {
+                console.log("class not found");
+                if(!semaphor && !mfaDetector){
+                    setTimeout(mfa_ov_detector, 100, true);
+                }else{
+                    console.log("semaphor detected");
+                }
+            }
+        }
+
+        function mfa_timeout_detector(){
+            if($("div[data-se='infobox-error']").length > 0){
+                // This page has timed out!
+                return true;
+            }
+            return false;
+        }
+
+
+
+        // Render the Okta Sign-In Widget
+        var oktaSignIn = new OktaSignIn(config);
+
+        oktaSignIn.on('afterRender', function (context) {
+            console.log("after");
+            setTimeout(mfa_ov_detector, 100);
+        });
+
+        oktaSignIn.on('ready', function (context) {
+            console.log("ready");
+            // OV enhanced screens
+            //setTimeout(mfa_ov_detector, 100);
+        });
+
+        oktaSignIn.on('afterError', function (context) {
+                console.log("afterError");
+                // OV enhanced screens
+                //setTimeout(mfa_ov_detector, 100);
+
+            });
+
+        oktaSignIn.renderEl({ el: '#okta-login-container' },
+            OktaUtil.completeLogin,
+            function(error) {
+                // Logs errors that occur when configuring the widget.
+                // Remove or replace this with your own custom error handler.
+                console.log(error.message, error);
+                
+            }
+        );
+
+        function loadModal(){
+            $("#mfa-modal").show();
+            $("#mfa-modal").load("https://assets.ceslogin.org/mfa/byuh/verify-guide.html");
+        }
+
+        function showStep(step){
+            $(".mfa-step").hide();
+            $("#" + step).show();
+        }
+
+        function showLastStep(step, stepA) {
+            $(".mfa-step").hide();
+
+            if(mfa_timeout_detector()){
+                $("#" + stepA).show();
+            }else{
+                $("#" + step).show();
+            }            
+        }
+
+        function showQR(){
+            $("div[data-se='qrContainer']").show()
+            closeModal();
+        }
+
+        function closeModal(){
+            $("#mfa-modal").hide();
+        }
+
+
+    </script>
+
+
+<!-- MFA Okta Verify Section-->
+
+    <style>
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.9);
+            font-family: 'Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Oxygen-Sans', 'Ubuntu', 'Cantarell', 'Helvetica Neue', sans-serif
+        }
+    
+        .modal-content {
+            margin: 5% auto;
+            padding: 20px;
+            border: 1px solid #000;
+            width: 80%;
+            background-color: #fff;
+            z-index: 2;
+            height: 700px;
+            border-radius: 15px;
+        }
+    
+        .mfa-step {
+            display: none;
+            padding: 0 30px;
+            text-align: center;
+    
+    
+            max-width: 600px;
+            max-height: 660px;
+            margin: 0 auto;
+            padding: 30px;
+        }
+    
+        .mfa-head {
+            width: 100%;
+            display: flex;
+        }
+    
+        img:has(> div.mfa-head) {
+            margin: 5px 0;
+        }
+    
+        .btn {
+            background: #2e72e1;
+            border-radius: 5px;
+            color: #fff;
+            font-size: 16px;
+            font-weight: 600;
+            /*letter-spacing: .8px;*/
+            line-height: 19.2px;
+            margin-top: 12px;
+            margin-bottom: 12px;
+            /*padding: 10px 25px;*/
+            text-decoration: none;
+            transition: all .2s;
+            font-family: 'Aeonik', 'Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Oxygen-Sans', 'Ubuntu', 'Cantarell', 'Helvetica Neue', sans-serif;
+            padding-left: 18.28px;
+            padding-right: 18.28px;
+            padding-top: 13.7143px;
+            padding-bottom: 13.7143px;
+            text-align: center;
+    
+        }
+    
+        .btn:hover {
+            background-color: #10469f;
+        }
+    
+        .btn-grey {
+            background: #fff;
+            border: 2px solid #A0A0A0;
+            border-radius: 5px;
+            color: #424242;
+            font-size: 12pt;
+            font-weight: 900;
+            letter-spacing: .125px;
+            margin: 12px;
+            padding: 10px 25px;
+            text-decoration: none;
+            transition: all .2s;
+        }
+    
+        .btn-grey:hover {
+            background: #eee;
+        }
+    
+        .btn-red {
+            background: #A3082A;
+            border-radius: 5px;
+            color: #fff;
+            font-size: 12pt;
+            font-weight: 900;
+            letter-spacing: .125px;
+            margin: 12px;
+            padding: 10px 22px;
+            text-decoration: none;
+            transition: all .2s;
+        }
+    
+        .btn-red:hover {
+            background: #E61744;
+        }
+    
+        .btn-grid {
+            display: flex;
+            gap: 15px;
+            justify-content: flex-end;
+            text-align: center;
+        }
+    
+        .content-grid {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 35px;
+            text-align: center;
+            flex-wrap: nowrap;
+        }
+    
+        .content {
+            align-content: center;
+            margin: 0px auto;
+            padding: 0 35px;
+            width: 100%;
+        }
+    
+      div.content>h1 {
+         font-size: 24px;
+         margin-bottom: 20px;
+         margin-top: 10px;
+         color: #272727;
+      }
+
+      div.content>p {
+         font-size: 18px;
+         text-align: center;
+         color: #272727;
+      }
+
+      div.content>img {
+         margin: 5px 0;
+         width: 320px;
+         font-family: 'Aeonik', 'Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Oxygen-Sans', 'Ubuntu', 'Cantarell', 'Helvetica Neue', sans-serif;
+      }
+
+      img.qr {
+         max-width: 200px; margin:12px 0;
+      }
+
+      img.step {
+         width: 20%;
+         margin: 12px 0;
+      }
+
+      h4.stepper {
+         font-weight: 800;
+         font-family: 'Aeonik', 'Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Oxygen-Sans', 'Ubuntu', 'Cantarell', 'Helvetica Neue', sans-serif;
+         margin-block: initial;
+         color: #272727;
+      }
+
+      h2.stepper {
+         font-weight: 500;
+         font-size: 24px;
+         color: #272727;
+         font-family: 'Aeonik', 'Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Oxygen-Sans', 'Ubuntu', 'Cantarell', 'Helvetica Neue', sans-serif;
+      }
+
+      div.content>p.sub {
+         font-size: 11px;
+         font-style: italic;
+         font-family: 'Aeonik', 'Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Oxygen-Sans', 'Ubuntu', 'Cantarell', 'Helvetica Neue', sans-serif;
+      }
+
+    </style>
+
+    <div id="modal-container" class="modal-content">
+        <div class="">
+            <div class="mfa-step" id="verify-start" style="display: block;">
+                <h1>Do you have an Apple or Android Device?</h1>
+                <div class="btn-grid">
+                    <a href="#" class="btn-grey" onclick="closeModal();">Close</a>
+                    <a href="#" class="btn" onclick="showStep('verify-apple-0');">Apple</a>
+                    <a href="#" class="btn" onclick="showStep('verify-android-0');">Android</a>
+                </div>
+            </div>
+    
+            <div class="mfa-step" id="verify-apple-0">
+                <div class="content-grid">
+                    <div class="content">
+                        <img src="https://assets.ceslogin.org/mfa/img/okta-verify-logo.png" style="max-width: 80px">
+                        <h1>Download Okta Verify On Your Mobile Device</h1>
+                        <div style="margin: 0px auto; max-width: 380px;">
+                            <p>Scan the QR code below or <a
+                                    href="https://apps.apple.com/us/app/okta-verify/id490179405">Download Okta Verify from
+                                    Apple
+                                    App Store</a></p>
+                            <p>Install the Okta Verify app.</p>
+                            <p>Click "Close" and continue to Step 2.</p>
+                        </div>
+    
+                        <img src="https://assets.ceslogin.org/mfa/img/ov-apple.png" class="step"
+                            alt="QR code link to Okta Verify in the Apple App Store">
+    
+                        <div class="btn-grid">
+                            <a href="#" class="btn-grey" onclick="closeModal();">Close</a>
+                            <a href="#" class="btn-grey" onclick="showStep('verify-start');">Back</a>
+                            <a href="#" class="btn" onclick="showStep('verify-1');">Next</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+    
+            <div class="mfa-step" id="verify-android-0">
+                <div class="content-grid">
+                    <div class="content">
+                        <img src="https://assets.ceslogin.org/mfa/img/okta-verify-logo.png" style="max-width: 80px">
+                        <h1>Download Okta Verify On Your Mobile Device</h1>
+                        <div style="margin: 0px auto; max-width: 380px;">
+                            <p>Scan the QR code below or <a
+                                    href="https://play.google.com/store/apps/details?id=com.okta.android.auth">Download Okta
+                                    Verify from Google Play Store</a></p>
+                            <p>Install the Okta Verify app.</p>
+                            <p>Click "Close" and continue to Step 2.</p>
+                        </div>
+    
+                        <img src="https://assets.ceslogin.org/mfa/img/ov-android.png" class="step"
+                            alt="QR code link to Okta Verify in the Android App Store">
+    
+                        <div class="btn-grid">
+                            <a href="#" class="btn-grey" onclick="closeModal();">Close</a>
+                            <a href="#" class="btn-grey" onclick="showStep('verify-start');">Back</a>
+                            <a href="#" class="btn" onclick="showStep('verify-1');">Next</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+    
+            <div class="mfa-step" id="verify-1">
+                <div class="content-grid">
+                    <div class="content">
+                        <p>Open the Okta Verify app after it has been installed.</p>
+                        <p>Click "Get Started" on the first screen.</p>
+                        <div class="btn-grid">
+                            <a href="#" class="btn-grey" onclick="closeModal();">Close</a>
+                            <a href="#" class="btn-grey" onclick="showStep('verify-start');">Back</a>
+                            <a href="#" class="btn" onclick="showStep('verify-2');">Next</a>
+                        </div>
+                    </div>
+                    <img src="https://assets.ceslogin.org/mfa/byuh/step-1-img.png" class="step"
+                        alt="Image of phone displaying Okta Verify welcome screen with a pointer on the Get Started button">
+                </div>
+            </div>
+    
+            <div class="mfa-step" id="verify-2">
+                <div class="content-grid">
+                    <div class="content">
+                        <p>On "How it works".</p>
+                        <p>Click "Next".</p>
+                        <div class="btn-grid">
+                            <a href="#" class="btn-grey" onclick="closeModal();">Close</a>
+                            <a href="#" class="btn-grey" onclick="showStep('verify-1');">Back</a>
+                            <a href="#" class="btn" onclick="showStep('verify-3');">Next</a>
+                        </div>
+                    </div>
+                    <img src="https://assets.ceslogin.org/mfa/byuh/step-2-img.png" class="step"
+                        alt="Image of phone displaying Okta Verify How It Works screen with a pointer on the Next button">
+                </div>
+            </div>
+    
+            <div class="mfa-step" id="verify-3">
+                <div class="content-grid">
+                    <div class="content">
+                        <p>On "Ways to verify".</p>
+                        <p>Click "Add Account".</p>
+                        <div class="btn-grid">
+                            <a href="#" class="btn-grey" onclick="closeModal();">Close</a>
+                            <a href="#" class="btn-grey" onclick="showStep('verify-2');">Back</a>
+                            <a href="#" class="btn" onclick="showStep('verify-4');">Next</a>
+                        </div>
+                    </div>
+                    <img src="https://assets.ceslogin.org/mfa/byuh/step-3-img.png" class="step"
+                        alt="Image of phone displaying Okta Verify ways to verify screen with a pointer on the Add Account button">
+                </div>
+            </div>
+    
+            <div class="mfa-step" id="verify-4">
+                <div class="content-grid">
+                    <div class="content">
+                        <p>On "Choose Account Type".</p>
+                        <p>Click "Organization".</p>
+                        <div class="btn-grid">
+                            <a href="#" class="btn-grey" onclick="closeModal();">Close</a>
+                            <a href="#" class="btn-grey" onclick="showStep('verify-3');">Back</a>
+                            <a href="#" class="btn" onclick="showStep('verify-5');">Next</a>
+                        </div>
+                    </div>
+                    <img src="https://assets.ceslogin.org/mfa/byuh/step-4-img.png" class="step"
+                        alt="Image of phone displaying Okta Verify Choose account type screen with a pointer on the Organization button">
+                </div>
+            </div>
+    
+            <div class="mfa-step" id="verify-5">
+                <div class="content-grid">
+                    <div class="content">
+                        <p>On "Add Account from Another Device".</p>
+                        <p>Click "Skip".</p>
+    
+                        <div class="btn-grid">
+                            <a href="#" class="btn-grey" onclick="closeModal();">Close</a>
+                            <a href="#" class="btn-grey" onclick="showStep('verify-4');">Back</a>
+                            <a href="#" class="btn" onclick="showStep('verify-6');">Next</a>
+                        </div>
+                    </div>
+                    <img src="https://assets.ceslogin.org/mfa/byuh/step-5-img.png" class="step"
+                        alt="Image of phone displaying Okta Verify asking if the user wants to add an account from another device with a pointer on the No button">
+                </div>
+            </div>
+    
+            <div class="mfa-step" id="verify-6">
+                <div class="content-grid">
+                    <div class="content">
+                        <p>On "Do You Have Your QR Code?".</p>
+                        <p>Click "Yes, Ready to Scan".</p>
+                        <div class="btn-grid">
+                            <a href="#" class="btn-grey" onclick="closeModal();">Close</a>
+                            <a href="#" class="btn-grey" onclick="showStep('verify-5');">Back</a>
+                            <a href="#" class="btn" onclick="showStep('verify-7');">Next</a>
+                        </div>
+                    </div>
+                    <img src="https://assets.ceslogin.org/mfa/byuh/step-6-img.png" class="step">
+                </div>
+            </div>
+    
+            <div class="mfa-step" id="verify-7">
+                <div class="content-grid">
+                    <div class="content">
+                        <p>Allow the Okta Verify app to access your devices camera to scan the QR code.</p>
+    
+                        <div class="btn-grid">
+                            <a href="#" class="btn-grey" onclick="closeModal();">Close</a>
+                            <a href="#" class="btn-grey" onclick="showStep('verify-6');">Back</a>
+                            <a href="#" class="btn" onclick="showLastStep('verify-8', 'verify-8a');">Next</a>
+                        </div>
+                    </div>
+                    <img src="https://assets.ceslogin.org/mfa/byuh/step-7-img.png" class="step"
+                        alt="Image of phone displaying Okta Verify screen asking if the user has a QR code with a pointer on the Yes Ready to Scan1 button.">
+                </div>
+            </div>
+    
+            <div class="mfa-step" id="verify-8">
+                <div class="content-grid">
+                    <div class="content">
+                        <p>You're ready to scan the QR code. Close this pop up window and scan the QR code shown. If the
+                            page
+                            has timed out, refresh the page and then scan the code.</p>
+    
+                        <div class="btn-grid">
+                            <a href="#" class="btn-grey" onclick="showStep('verify-7');">Back</a>
+                            <a href="#" class="btn-red" onclick="showQR();">Close</a>
+                        </div>
+                    </div>
+                    <img src="https://assets.ceslogin.org/mfa/byuh/step-8-img.png" class="step"
+                        alt="Image of phone displaying Okta Verify asking for permission to use the camera with a pointer on the OK button.">
+                    <img id="qrcode">
+                </div>
+            </div>
+    
+            <div class="mfa-step" id="verify-8a">
+                <div class="content-grid">
+                    <div class="content">
+                        <p>You're ready to scan the QR code, but the session has expired. Click Reload to log in again and
+                            scan the QR code.</p>
+    
+                        <div class="btn-grid">
+                            <a href="#" class="btn-grey" onclick="closeModal();">Close</a>
+                            <a href="#" class="btn-grey" onclick="showStep('verify-7');">Back</a>
+                            <a href="#" class="btn-red" onclick="location.reload();">Reload</a>
+                        </div>
+                    </div>
+                    <img src="https://assets.ceslogin.org/mfa/byuh/step-8-img.png" class="step"
+                        alt="Image of phone displaying Okta Verify waiting to scan a QR code.">
+                    <img id="qrcode">
+                </div>
+            </div>
+    
+        </div>
+    </div>
+    </div>
+    
+    <!-- End MFA Okta Verify Section -->
+
+    <!-- End MFA Okta Verify Section -->
+</body>
+</html>
