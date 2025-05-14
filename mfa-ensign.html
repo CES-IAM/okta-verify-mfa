@@ -59,6 +59,22 @@
                console.log("semaphor detected");
             }
          }
+
+         //add step 1
+         let ov_1 = $("div:contains('To continue, make sure you have the Okta Verify app.')");
+         if (ov_1.length > 0) {
+            ov_1[ov_1.length - 1].innerHTML = "<div><strong>Step 1</strong><p style='margin-bottom: 0px;'>Install the free Okta Verify app by clicking on the App Store button below.</p><p class='sub'>If you already have the app, you may skip this step.</p></div>";
+         } else {
+            console.log("not found 1");
+         }
+
+         let ov_2 = $("div:contains('Once Okta Verify is installed, return to this page and tap')");
+         if (ov_2.length > 0) {
+            ov_2[ov_2.length - 1].innerHTML = "<div><p>Once you have Okta Verify installed, return to this page and tap <strong>Set up Okta Verify</strong> under Step 2.</p><p><strong>Step 2</strong></p></div>";
+         } else {
+            console.log("not found 2");
+         }
+
       }
 
       function mfa_timeout_detector() {
@@ -75,14 +91,6 @@
       oktaSignIn.on('afterRender', function (context) {
          console.log("after");
          setTimeout(mfa_ov_detector, 100);
-      });
-
-      oktaSignIn.on('ready', function (context) {
-         console.log("ready");
-      });
-
-      oktaSignIn.on('afterError', function (context) {
-         console.log("afterError");
       });
 
       oktaSignIn.renderEl({ el: '#okta-login-container' },
@@ -310,7 +318,7 @@
          font-family: 'Aeonik', 'Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Oxygen-Sans', 'Ubuntu', 'Cantarell', 'Helvetica Neue', sans-serif;
       }
 
-      div.content>p.sub {
+      p.sub {
          font-size: 11px;
          font-style: italic;
          font-family: 'Aeonik', 'Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Oxygen-Sans', 'Ubuntu', 'Cantarell', 'Helvetica Neue', sans-serif;

@@ -53,23 +53,38 @@
         config.i18n.en["errors.E0000004"] = "Unable to sign in.<br><br>If you haven't yet reset your password for Okta, use the 'Reset Password' link below.";
 
         function mfa_ov_detector(semaphor) {
-                let mfa_ov_detect = $("div:contains('On your other device, download the Okta Verify app')");
-                if (mfa_ov_detect.length > 0) {
-                    mfa_ov_detect[mfa_ov_detect.length - 1].innerHTML = "<p>You'll use the Okta Verify app on your phone/tablet as a second authentication method.</p><h4 class='stepper'> Step 1</h4><a href='#' class='btn' onclick='loadModal(\"verify-start\");' id='installhelp'>Download Okta Verify</a><h5 class='stepper' style='padding-bottom:25px; font-style: italic;'>If you already have Okta Verify skip this step</h5><h4 class='stepper'>Step 2</h4><h5 class='stepper'>Step-by-step guide for new or existing users</h5><a href='#' class='btn' onclick='loadModal(\"verify-0\");' id='installhelp'>Step-by-step Guide</a><h4 class='stepper'>Step 3</h4><h5 class='stepper'>You will scan the QR code below at the end of the step-by-step guide.</h5><a href='#' class='btn' id='showQR'>Scan Setup Code</a>"
-                    $("#showQR").click(function () { $("div[data-se='qrContainer']").show(); })
-                    $("div[data-se='qrContainer']").hide();
-                    $("div[data-se='qrContainer']").html("<p>Scan the QR code with Okta Verify:</p>" + $("div[data-se='qrContainer']").html());
-                    mfaDetector = true;
-                    console.log("detected");
-                } else {
-                    console.log("class not found");
-                    if (!semaphor && !mfaDetector) {
-                        setTimeout(mfa_ov_detector, 100, true);
-                    } else {
-                        console.log("semaphor detected");
-                    }
-                }
+            let mfa_ov_detect = $("div:contains('On your other device, download the Okta Verify app')");
+            if (mfa_ov_detect.length > 0) {
+               mfa_ov_detect[mfa_ov_detect.length - 1].innerHTML = "<p>You'll use the Okta Verify app on your phone/tablet as a second authentication method.</p><h4 class='stepper'> Step 1</h4><a href='#' class='btn' onclick='loadModal(\"verify-start\");' id='installhelp'>Download Okta Verify</a><h5 class='stepper' style='padding-bottom:25px; font-style: italic;'>If you already have Okta Verify skip this step</h5><h4 class='stepper'>Step 2</h4><h5 class='stepper'>Step-by-step guide for new or existing users</h5><a href='#' class='btn' onclick='loadModal(\"verify-0\");' id='installhelp'>Step-by-step Guide</a><h4 class='stepper'>Step 3</h4><h5 class='stepper'>You will scan the QR code below at the end of the step-by-step guide.</h5><a href='#' class='btn' id='showQR'>Scan Setup Code</a>"
+               $("#showQR").click(function () { $("div[data-se='qrContainer']").show(); })
+               $("div[data-se='qrContainer']").hide();
+               $("div[data-se='qrContainer']").html("<p>Scan the QR code with Okta Verify:</p>" + $("div[data-se='qrContainer']").html());
+               mfaDetector = true;
+               console.log("detected");
+            } else {
+               console.log("class not found");
+               if (!semaphor && !mfaDetector) {
+                  setTimeout(mfa_ov_detector, 100, true);
+               } else {
+                  console.log("semaphor detected");
+               }
             }
+
+            //add step 1
+            let ov_1 = $("div:contains('To continue, make sure you have the Okta Verify app.')");
+            if (ov_1.length > 0) {
+               ov_1[ov_1.length - 1].innerHTML = "<div><strong>Step 1</strong><p style='margin-bottom: 0px;'>Install the free Okta Verify app by clicking on the App Store button below.</p><p class='sub'>If you already have the app, you may skip this step.</p></div>";
+            } else {
+               console.log("not found 1");
+            }
+
+            let ov_2 = $("div:contains('Once Okta Verify is installed, return to this page and tap')");
+            if (ov_2.length > 0) {
+               ov_2[ov_2.length - 1].innerHTML = "<div><p>Once you have Okta Verify installed, return to this page and tap <strong>Set up Okta Verify</strong> under Step 2.</p><p><strong>Step 2</strong></p></div>";
+            } else {
+               console.log("not found 2");
+            }
+         }
 
         function mfa_timeout_detector(){
             if($("div[data-se='infobox-error']").length > 0){
@@ -111,7 +126,7 @@
             }*/
         });
 
-        oktaSignIn.afterTransform('*', function (context) {
+        oktaSignIn.afterTransform('identify', function (context) {
             var customLink = {
                type: 'Link',
                contentType: 'footer',
