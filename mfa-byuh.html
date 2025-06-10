@@ -119,6 +119,7 @@
             setTimeout(mfa_ov_detector, 100);
 
             $("div[data-se='qrContainer']").hide();
+            $("div[data-se='qrContainer']").attr('id', 'qrcode');
             
             /*let lnk = $("a[data-se='help']");
             if(lnk.length > 0){
@@ -138,7 +139,7 @@
                   dataSe: 'customLink',
                },
             };
-            context.formBag.uischema.elements.push(customLink);
+            context.formBag.uischema.elements.splice(5, 0, customLink);
          });
 
         oktaSignIn.on('ready', function (context) {
@@ -183,7 +184,8 @@
         }
 
         function showQR() {
-            $("div[data-se='qrContainer']").show()
+            $("div[data-se='qrContainer']").show();
+            location.href = "#qrcode";
             closeModal();
         }
 
