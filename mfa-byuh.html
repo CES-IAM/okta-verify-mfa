@@ -56,7 +56,7 @@
       config.i18n.en["oie.enroll.webauthn.instructions"] = "You will be prompted to register a security key or biometric authenticator (Windows Hello, Touch ID, Face ID, etc.). Follow the instructions to complete set up. If you choose to use a passkey, make sure the passkey isn't trapped on this computer.";
       config.i18n.en["oie.enroll.okta_verify.qrcode.step2"] = "Open the app and follow the instructions to add your account";
       config.i18n.en["oie.enroll.okta_verify.qrcode.step3.updated"] = "When prompted, tap <$1>Scan a QR code</$1>, then scan the QR code below:";
-      config.i18n.en["errors.E0000004"] = "Unable to sign in.<br><br>If you haven't yet reset your password for Okta, use the 'Reset Password' link below.";
+      config.i18n.en["errors.E0000004"] = "Unable to sign in.<br><br>If you haven't yet reset your password for Okta, use the 'Reset Password' link at the bottom of the page.";
 
       function mfa_ov_detector(semaphor) {
          let mfa_ov_detect = $("div:contains('On your other device, download the Okta Verify app')");
@@ -134,6 +134,11 @@
          }*/
       });
 
+      oktaSignIn.afterTransform('*', function (context) {
+         console.log(context.formName);
+         console.log(context.formBag.uischema);
+      });
+
       oktaSignIn.afterTransform('identify', function (context) {
          var customLink = {
             type: 'Link',
@@ -146,16 +151,36 @@
                dataSe: 'customLink',
             },
          };
-         context.formBag.uischema.elements.splice(5, 0, customLink);
+         //context.formBag.uischema.elements.splice(5, 0, customLink);
+         context.formBag.uischema.elements.push(customLink);
       });
+
+      oktaSignIn.afterTransform('challenge-authenticator', function (context) {
+         var customLink = {
+            type: 'Link',
+            contentType: 'footer',
+            options: {
+               href: 'https://password-reset.byuh.edu/pma',
+               target: '_blank',
+               step: '',
+               label: 'Reset Password',
+               dataSe: 'customLink',
+            },
+         };
+         //context.formBag.uischema.elements.splice(5, 0, customLink);
+         context.formBag.uischema.elements.push(customLink);
+      });
+
+
 
       oktaSignIn.on('ready', function (context) {
          console.log("ready");
       });
 
+      /*
       oktaSignIn.on('afterError', function (context) {
          console.log("afterError");
-      });
+      });*/
 
       oktaSignIn.renderEl({ el: '#okta-login-container' },
          OktaUtil.completeLogin,
